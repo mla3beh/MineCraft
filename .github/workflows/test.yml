@@ -10,7 +10,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install dev dependencies
+        run: npm install
       - name: Syntax check modules
         run: for f in noise.js blocks.js world.js game.js persistence.js; do node --check "$f"; done
-      - name: Run core logic tests
+      - name: Run logic tests (core, world, systems, persistence)
         run: npm test

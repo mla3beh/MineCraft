@@ -344,7 +344,7 @@ function breakTime(def) {
 function canHarvest(def) {
   if (!def.needsTool) return true;
   const tool = heldTool();
-  return tool && def.toolType === tool.tool && tool.tier >= (def.minTier || 1);
+  return !!(tool && def.toolType === tool.tool && tool.tier >= (def.minTier || 1));
 }
 
 function startMining(dt) {
@@ -470,7 +470,9 @@ function spawnParticles(x, y, z, def, n) {
     particles.push({ mesh: m, vel: new THREE.Vector3((Math.random() - 0.5) * 3, Math.random() * 3 + 1, (Math.random() - 0.5) * 3), life: 0.7 });
   }
 }
-const _tcanvas = document.createElement('canvas'); _tcanvas.width = _tcanvas.height = 1; const _tctx = _tcanvas.getContext('2d');
+const _tcanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+if (_tcanvas) { _tcanvas.width = _tcanvas.height = 1; }
+const _tctx = _tcanvas ? _tcanvas.getContext('2d') : null;
 function sampleTileColor(tile) {
   const cols = atlas.cols, sx = (tile % cols) * 16 + 8, sy = ((tile / cols) | 0) * 16 + 8;
   _tctx.drawImage(atlas.canvas, sx, sy, 1, 1, 0, 0, 1, 1);
@@ -818,7 +820,7 @@ function renderCursor() {
   ci.querySelector('canvas').getContext('2d').drawImage(itemIcon(cursor.id), 0, 0, 36, 36);
   ci.querySelector('.count').textContent = cursor.count > 1 ? cursor.count : '';
 }
-addEventListener('mousemove', (e) => { const ci = $('cursorItem'); if (cursor) { ci.style.left = (e.clientX - 18) + 'px'; ci.style.top = (e.clientY - 18) + 'px'; } });
+if (typeof window !== 'undefined') addEventListener('mousemove', (e) => { const ci = $('cursorItem'); if (cursor) { ci.style.left = (e.clientX - 18) + 'px'; ci.style.top = (e.clientY - 18) + 'px'; } });
 
 // ----------------------------------------------------------------------------
 //  Audio (procedural, original)
@@ -1191,4 +1193,17 @@ function main() {
   bindInput(); bindSettings(); bindMenu();
   requestAnimationFrame(loop);
 }
-main();
+
+// Test hook — lets headless Node tests drive the real gameplay logic without a browser.
+// (Harmless in the browser; only the getters/setters bridge module-private state.)
+export const __test = {
+  addItem, breakTime, canHarvest, updateFurnaces, heldTool, newBlockEntity,
+  player,
+  get inv() { return inv; }, set inv(v) { inv = v; },
+  get world() { return world; }, set world(v) { world = v; },
+  get hotbarSel() { return hotbarSel; }, set hotbarSel(v) { hotbarSel = v; },
+  get gameMode() { return gameMode; }, set gameMode(v) { gameMode = v; },
+  get openScreen() { return openScreen; }, set openScreen(v) { openScreen = v; },
+};
+
+if (typeof window !== 'undefined') main();

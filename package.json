@@ -4,8 +4,11 @@
   "description": "An original browser voxel sandbox (Minecraft-style) built with Three.js — terrain, lighting, crafting, mobs, and full IndexedDB save/load.",
   "type": "module",
   "scripts": {
-    "test": "node scripts/setup-stub.mjs && node test_core.mjs",
+    "test": "node scripts/setup-stub.mjs && node test_core.mjs && node test_world.mjs && node test_systems.mjs && node test_persistence.mjs",
     "start": "python3 -m http.server 8099"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "fake-indexeddb": "^6.0.0"
+  }
 }

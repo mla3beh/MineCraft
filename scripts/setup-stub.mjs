@@ -16,5 +16,14 @@ export class BufferGeometry {
   computeVertexNormals() {}
   dispose() {}
 }
+export class Vector3 {
+  constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }
+  set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }
+  copy(v) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }
+  clone() { return new Vector3(this.x, this.y, this.z); }
+  toArray() { return [this.x, this.y, this.z]; }
+  fromArray(a) { this.x = a[0]; this.y = a[1]; this.z = a[2]; return this; }
+}
+export const MathUtils = { clamp: (v, a, b) => v < a ? a : v > b ? b : v };
 `);
 console.log('three stub ready');

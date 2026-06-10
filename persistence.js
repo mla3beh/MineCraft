@@ -30,7 +30,8 @@ export async function putWorldMeta(meta) { const st = await tx('worlds', 'readwr
 
 export async function saveState(worldId, state) {
   const st = await tx('state', 'readwrite');
-  return reqP(st.put(Object.assign({ worldId }, state)));
+  // worldId must win even if `state` carries a stale worldId (e.g. from an imported save)
+  return reqP(st.put(Object.assign({}, state, { worldId })));
 }
 export async function loadState(worldId) { const st = await tx('state', 'readonly'); return reqP(st.get(worldId)); }
 
