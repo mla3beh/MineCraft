@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Cubeworld — Browser Voxel Sandbox</title>
+<style>
+  :root{ --ui:#d8d8d8; --panel:#1c1c22ee; --slot:#2c2c34; --accent:#6fbf73; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; overflow:hidden; background:#000; font-family:'Trebuchet MS',Verdana,system-ui,sans-serif; color:var(--ui); -webkit-user-select:none; user-select:none; }
+  canvas{ display:block; }
+  #game{ position:fixed; inset:0; }
+  .hidden{ display:none !important; }
+
+  /* ---------- Menus ---------- */
+  #menu, #pause, #death, #worlds{ position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    background:radial-gradient(circle at 50% 30%, #2b3a4a, #0c0f14 80%); z-index:50; text-align:center; }
+  #menu h1{ font-size:54px; margin:0 0 6px; letter-spacing:3px; color:#fff; text-shadow:3px 3px 0 #000, 0 0 22px #6fbf7388; }
+  #menu .sub{ opacity:.7; margin-bottom:18px; font-size:14px; }
+  .btn{ background:#3a4a3a; border:2px solid #000; color:#fff; padding:11px 26px; font-size:18px; cursor:pointer; min-width:300px;
+    box-shadow:inset 0 2px 0 #ffffff22, inset 0 -3px 0 #00000055; }
+  .btn:hover{ background:#4f6b4f; }
+  .btn.small{ min-width:auto; padding:8px 16px; font-size:14px; }
+  .row{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; }
+  input,select{ background:#111; border:2px solid #000; color:#fff; padding:8px 10px; font-size:15px; }
+  label{ font-size:13px; opacity:.85; }
+  .field{ display:flex; flex-direction:column; gap:4px; text-align:left; }
+  .panel{ background:var(--panel); border:2px solid #000; padding:22px 26px; border-radius:4px; max-width:520px; }
+  #worldList{ display:flex; flex-direction:column; gap:8px; max-height:46vh; overflow:auto; width:460px; margin:8px 0; }
+  .worldItem{ display:flex; justify-content:space-between; align-items:center; gap:10px; background:#222; border:2px solid #000; padding:10px 12px; }
+  .worldItem .meta{ text-align:left; font-size:12px; opacity:.8; }
+  .worldItem .name{ font-size:16px; color:#fff; }
+  .credit{ position:fixed; bottom:8px; left:10px; font-size:11px; opacity:.5; }
+  .ver{ position:fixed; bottom:8px; right:10px; font-size:11px; opacity:.5; }
+
+  /* ---------- HUD ---------- */
+  #hud{ position:fixed; inset:0; pointer-events:none; z-index:10; }
+  #crosshair{ position:absolute; left:50%; top:50%; width:22px; height:22px; transform:translate(-50%,-50%); opacity:.85;
+    background:
+      linear-gradient(#fff,#fff) center/2px 22px no-repeat,
+      linear-gradient(#fff,#fff) center/22px 2px no-repeat; mix-blend-mode:difference; }
+  #hotbar{ position:absolute; left:50%; bottom:14px; transform:translateX(-50%); display:flex; gap:2px; padding:3px;
+    background:#0008; border:2px solid #000; }
+  .slot{ width:50px; height:50px; background:var(--slot); border:2px solid #111; position:relative; display:flex; align-items:center; justify-content:center; }
+  .slot.sel{ border-color:#fff; box-shadow:0 0 0 2px #fff inset; }
+  .slot canvas{ width:38px; height:38px; image-rendering:pixelated; }
+  .slot .count{ position:absolute; right:2px; bottom:0; font-size:13px; color:#fff; text-shadow:1px 1px 0 #000; }
+  .slot .dura{ position:absolute; left:3px; right:3px; bottom:3px; height:3px; background:#000; }
+  .slot .dura > i{ display:block; height:100%; background:#6f6; }
+  #stats{ position:absolute; left:50%; bottom:72px; transform:translateX(-50%); width:340px; display:flex; justify-content:space-between; }
+  .bar{ display:flex; gap:1px; }
+  .icon{ width:18px; height:18px; image-rendering:pixelated; }
+  #heldName{ position:absolute; left:50%; bottom:130px; transform:translateX(-50%); font-size:16px; color:#fff;
+    text-shadow:2px 2px 0 #000; opacity:0; transition:opacity .4s; }
+  #debug{ position:absolute; left:6px; top:6px; font-size:12px; line-height:1.45; color:#fff; text-shadow:1px 1px 0 #000;
+    white-space:pre; background:#0006; padding:4px 6px; }
+  #hotbarLabel{ position:absolute; left:50%; bottom:72px; transform:translateX(-50%); }
+
+  /* ---------- Inventory / containers ---------- */
+  #screen{ position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:#0007; }
+  #screenInner{ background:#c6c6c6; color:#222; border:3px solid #000; padding:14px; box-shadow:0 8px 30px #000a; }
+  #screenInner h3{ margin:2px 4px 10px; font-size:16px; }
+  .grid{ display:grid; gap:2px; }
+  .islot{ width:42px; height:42px; background:#8b8b8b; border:2px solid #555; border-top-color:#373737; border-left-color:#373737;
+    position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .islot:hover{ background:#a9a9a9; }
+  .islot canvas{ width:32px; height:32px; image-rendering:pixelated; pointer-events:none; }
+  .islot .count{ position:absolute; right:1px; bottom:-2px; font-size:12px; color:#fff; text-shadow:1px 1px 0 #000; pointer-events:none; }
+  .islot .dura{ position:absolute; left:3px; right:3px; bottom:2px; height:3px; background:#000;}
+  .islot .dura>i{ display:block;height:100%;background:#6f6;}
+  #cursorItem{ position:fixed; width:40px; height:40px; pointer-events:none; z-index:60; display:none; }
+  #cursorItem canvas{ width:36px; height:36px; image-rendering:pixelated; }
+  #cursorItem .count{ position:absolute; right:0; bottom:0; font-size:12px; color:#fff; text-shadow:1px 1px 0 #000; }
+  .invRow{ display:flex; gap:14px; align-items:flex-start; }
+  .col{ display:flex; flex-direction:column; gap:8px; align-items:center; }
+  .arrow{ font-size:26px; color:#444; padding:0 6px; }
+  .tag{ font-size:12px; opacity:.7; margin:4px 0 2px; }
+
+  /* ---------- Chat / commands ---------- */
+  #chat{ position:fixed; left:0; bottom:0; width:60%; z-index:40; }
+  #chatLog{ position:absolute; bottom:30px; left:6px; font-size:13px; color:#fff; text-shadow:1px 1px 0 #000; max-height:200px; overflow:hidden; }
+  #chatLog div{ background:#0005; padding:1px 4px; margin-top:2px; width:fit-content; }
+  #chatInput{ width:100%; border:0; border-top:2px solid #000; background:#000a; color:#fff; padding:6px; display:none; }
+
+  #toast{ position:fixed; top:14px; left:50%; transform:translateX(-50%); background:#000b; color:#fff; padding:8px 16px; z-index:70; display:none; }
+  #vignette{ position:fixed; inset:0; pointer-events:none; z-index:9; box-shadow:inset 0 0 0 0 #f00; transition:box-shadow .15s; }
+  #loading{ position:fixed; inset:0; z-index:45; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0c0f14; gap:14px; }
+  #loadbar{ width:320px; height:14px; background:#222; border:2px solid #000; }
+  #loadbar>i{ display:block; height:100%; width:0%; background:var(--accent); }
+  kbd{ background:#222; border:1px solid #000; border-bottom-width:2px; padding:1px 5px; font-size:12px; }
+  .help{ font-size:12px; opacity:.8; line-height:1.7; max-width:480px; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<!-- ===================== MAIN MENU ===================== -->
+<div id="menu">
+  <h1>CUBEWORLD</h1>
+  <div class="sub">An original browser voxel sandbox</div>
+  <div class="panel">
+    <div class="row" style="margin-bottom:14px;">
+      <div class="field"><label>World name</label><input id="mName" value="New World" maxlength="24"></div>
+      <div class="field"><label>Seed (blank = random)</label><input id="mSeed" placeholder="e.g. 12345"></div>
+    </div>
+    <div class="row" style="margin-bottom:14px;">
+      <div class="field"><label>Mode</label>
+        <select id="mMode"><option value="survival">Survival</option><option value="creative">Creative</option></select>
+      </div>
+      <div class="field"><label>World size</label>
+        <select id="mSize"><option value="48">Cozy</option><option value="64" selected>Normal</option><option value="96">Large</option></select>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnCreate">Create World</button>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn small" id="btnWorlds">Load World</button>
+      <button class="btn small" id="btnImport">Import .json</button>
+      <input type="file" id="fileImport" accept="application/json" class="hidden">
+    </div>
+  </div>
+  <div class="help">
+    <kbd>WASD</kbd> move · <kbd>Space</kbd> jump (×2 fly in creative) · <kbd>Shift</kbd> sneak · <kbd>Ctrl</kbd> sprint<br>
+    <kbd>L-Click</kbd> break · <kbd>R-Click</kbd> place · <kbd>E</kbd> inventory · <kbd>1-9</kbd>/scroll hotbar · <kbd>Q</kbd> drop<br>
+    <kbd>F5</kbd> camera · <kbd>F3</kbd> debug · <kbd>T</kbd>/<kbd>/</kbd> chat & commands · <kbd>Esc</kbd> pause
+  </div>
+  <div class="credit">100% original textures, sounds &amp; names · saves locally in your browser (IndexedDB)</div>
+  <div class="ver" id="verTag">v1.0</div>
+</div>
+
+<!-- ===================== WORLD LIST ===================== -->
+<div id="worlds" class="hidden">
+  <div class="panel">
+    <h3 style="margin-top:0;">Your Worlds</h3>
+    <div id="worldList"></div>
+    <div class="row"><button class="btn small" id="btnWorldsBack">Back</button></div>
+  </div>
+</div>
+
+<!-- ===================== LOADING ===================== -->
+<div id="loading" class="hidden">
+  <h2 id="loadTitle">Generating world…</h2>
+  <div id="loadbar"><i></i></div>
+  <div id="loadPct" style="opacity:.7">0%</div>
+</div>
+
+<!-- ===================== HUD ===================== -->
+<div id="hud" class="hidden">
+  <div id="vignette"></div>
+  <div id="crosshair"></div>
+  <div id="debug" class="hidden"></div>
+  <div id="heldName"></div>
+  <div id="stats" class="hidden">
+    <div class="bar" id="healthBar"></div>
+    <div class="bar" id="foodBar"></div>
+  </div>
+  <div id="hotbar"></div>
+</div>
+
+<!-- ===================== SCREENS (inventory/craft/furnace/chest) ===================== -->
+<div id="screen" class="hidden"><div id="screenInner"></div></div>
+<div id="cursorItem"><canvas width="36" height="36"></canvas><span class="count"></span></div>
+
+<!-- ===================== CHAT ===================== -->
+<div id="chat" class="hidden">
+  <div id="chatLog"></div>
+  <input id="chatInput" autocomplete="off" spellcheck="false" />
+</div>
+
+<!-- ===================== PAUSE ===================== -->
+<div id="pause" class="hidden">
+  <div class="panel">
+    <h3 style="margin-top:0;text-align:center;">Paused</h3>
+    <div class="col" style="gap:10px;">
+      <button class="btn" id="btnResume">Resume</button>
+      <div class="field" style="width:300px;"><label>Render distance: <span id="rdVal">6</span> chunks</label><input id="rdSlider" type="range" min="3" max="12" value="6"></div>
+      <div class="field" style="width:300px;"><label>Field of view: <span id="fovVal">75</span></label><input id="fovSlider" type="range" min="50" max="110" value="75"></div>
+      <div class="field" style="width:300px;"><label>Mouse sensitivity: <span id="sensVal">100</span>%</label><input id="sensSlider" type="range" min="20" max="300" value="100"></div>
+      <div class="field" style="width:300px;"><label>Volume: <span id="volVal">60</span>%</label><input id="volSlider" type="range" min="0" max="100" value="60"></div>
+      <button class="btn" id="btnExport">Export world to file</button>
+      <button class="btn" id="btnQuit">Save &amp; Quit to Title</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== DEATH ===================== -->
+<div id="death" class="hidden">
+  <h1 style="color:#b22; text-shadow:3px 3px 0 #000;">You Died!</h1>
+  <div id="deathMsg" style="opacity:.8;"></div>
+  <button class="btn" id="btnRespawn">Respawn</button>
+  <button class="btn small" id="btnDeathQuit">Quit to Title</button>
+</div>
+
+<div id="toast"></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module" src="./game.js"></script>
+</body>
+</html>
