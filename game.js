@@ -30,6 +30,7 @@ const DAY_LENGTH = 1200;       // seconds for a full cycle
 const keys = {};
 let pointerLocked = false;
 let thirdPerson = 0;           // 0 first, 1 back, 2 front
+let isTouch = false, touchFwd = 0, touchStrafe = 0;   // mobile virtual-stick analog input
 
 const player = {
   pos: new THREE.Vector3(0, SEA + 12, 0),
@@ -219,6 +220,7 @@ function updatePlayer(dt) {
   if (keys['KeyS']) { mx -= fwd.x; mz -= fwd.z; }
   if (keys['KeyD']) { mx += right.x; mz += right.z; }
   if (keys['KeyA']) { mx -= right.x; mz -= right.z; }
+  if (isTouch) { mx += fwd.x * touchFwd + right.x * touchStrafe; mz += fwd.z * touchFwd + right.z * touchStrafe; }
   const len = Math.hypot(mx, mz) || 1; mx /= len; mz /= len;
   const sprint = keys['ControlLeft'] || keys['ControlRight'];
   const sneak = keys['ShiftLeft'];
@@ -750,7 +752,10 @@ function consumeGrid() { for (const st of craftGrid) if (st) { st.count--; } for
 
 function renderScreen() {
   const wrap = $('screen'), inner = $('screenInner');
-  wrap.classList.remove('hidden'); inner.innerHTML = '';
+  wrap.classList.remove('hidden'); inner.innerHTML = ''; inner.style.position = 'relative';
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'screenClose'; closeBtn.className = 'btn small'; closeBtn.textContent = '✕';
+  closeBtn.onclick = closeScreen; inner.appendChild(closeBtn);
   const type = openScreen.type;
   if (type === 'inventory' || type === 'crafting') renderCraftingScreen(inner, type === 'crafting' ? 3 : 2);
   else if (type === 'furnace') renderFurnaceScreen(inner);
@@ -872,7 +877,12 @@ function updateVignette(dt) { _flash = Math.max(0, _flash - dt * 3); $('vignette
 // ----------------------------------------------------------------------------
 //  Input handlers
 // ----------------------------------------------------------------------------
-function requestLock() { if (!openScreen && !paused && running) renderer.domElement.requestPointerLock(); }
+function requestLock() {
+  if (isTouch) return;                         // mobile uses on-screen controls, not pointer lock
+  if (!openScreen && !paused && running && renderer.domElement.requestPointerLock) {
+    try { renderer.domElement.requestPointerLock(); } catch (e) {}
+  }
+}
 function bindInput() {
   renderer.domElement.addEventListener('click', () => { ensureAudio(); if (!pointerLocked && !openScreen && !paused) requestLock(); });
   document.addEventListener('pointerlockchange', () => { pointerLocked = document.pointerLockElement === renderer.domElement; });
@@ -1157,7 +1167,7 @@ function loop(now) {
     let steps = 0;
     while (clock.acc >= TICK && steps < 5) { simulate(TICK); clock.acc -= TICK; steps++; }
     // continuous (frame-rate) things
-    if (_mining && pointerLocked) startMining(dt);
+    if (_mining && (pointerLocked || isTouch)) startMining(dt);
     updateDrops(dt); updateParticles(dt);
     updateChunks();
     timeOfDay = (timeOfDay + dt / DAY_LENGTH) % 1;
@@ -1178,7 +1188,64 @@ function simulate(dt) {
   updateFurnaces(dt);
 }
 let _hudT = 0;
-function renderHud() { _hudT += 1; if (_hudT % 6 === 0) { renderStats(); renderDebug(); } }
+function renderHud() { _hudT += 1; if (_hudT % 6 === 0) { renderStats(); renderDebug(); updateTouchVisibility(); } }
+function updateTouchVisibility() {
+  if (!isTouch) return;
+  $('touch').classList.toggle('hidden', !(running && !paused && !openScreen));
+  $('tfly').style.display = gameMode === 'creative' ? '' : 'none';
+}
+
+// ---------------- Touch / mobile controls ----------------
+function setupTouch() {
+  // Treat as touch only when the PRIMARY pointer is coarse (phones/tablets) — so a
+  // touchscreen laptop with a mouse keeps the desktop controls.
+  isTouch = (typeof matchMedia !== 'undefined') ? matchMedia('(pointer: coarse)').matches : (navigator.maxTouchPoints > 0);
+  if (!isTouch) return;
+  document.body.classList.add('touch');
+
+  const stick = $('tstick'), nub = $('tnub'), look = $('tlook');
+  let joyId = null, cx = 0, cy = 0; const R = 56;
+  function setJoy(t) { let dx = t.clientX - cx, dy = t.clientY - cy; const d = Math.hypot(dx, dy) || 1; const cl = Math.min(d, R); dx = dx / d * cl; dy = dy / d * cl; nub.style.transform = `translate(${dx}px,${dy}px)`; touchStrafe = dx / R; touchFwd = -dy / R; }
+  stick.addEventListener('touchstart', (e) => { ensureAudio(); const t = e.changedTouches[0]; joyId = t.identifier; const r = stick.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; setJoy(t); e.preventDefault(); }, { passive: false });
+
+  let lookId = null, lx = 0, ly = 0;
+  look.addEventListener('touchstart', (e) => { ensureAudio(); const t = e.changedTouches[0]; lookId = t.identifier; lx = t.clientX; ly = t.clientY; e.preventDefault(); }, { passive: false });
+
+  window.addEventListener('touchmove', (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyId) { setJoy(t); e.preventDefault(); }
+      else if (t.identifier === lookId) {
+        const s = settings.sensitivity * 0.005;
+        player.yaw -= (t.clientX - lx) * s; player.pitch -= (t.clientY - ly) * s;
+        player.pitch = THREE.MathUtils.clamp(player.pitch, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+        lx = t.clientX; ly = t.clientY; e.preventDefault();
+      }
+    }
+  }, { passive: false });
+  window.addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyId) { joyId = null; touchFwd = 0; touchStrafe = 0; nub.style.transform = ''; }
+      if (t.identifier === lookId) lookId = null;
+    }
+  });
+
+  const press = (id, on, off) => {
+    const el = $(id);
+    el.addEventListener('touchstart', (e) => { ensureAudio(); on(); e.preventDefault(); }, { passive: false });
+    if (off) el.addEventListener('touchend', (e) => { off(); e.preventDefault(); }, { passive: false });
+  };
+  press('tjump', () => { keys['Space'] = true; }, () => { keys['Space'] = false; });
+  press('tbreak', () => { if (!attackMob()) startMining(0.001); _mining = true; }, () => { _mining = false; breakState.target = null; breakState.progress = 0; });
+  press('tplace', () => useItem());
+  press('tinv', () => { if (openScreen) closeScreen(); else openInventory(); });
+  press('tpause', () => togglePause());
+  press('tfly', () => { if (gameMode === 'creative') { player.fly = !player.fly; player.vel.y = 0; } });
+
+  // tap a hotbar slot to select it
+  $('hotbar').addEventListener('touchstart', (e) => { const s = e.target.closest('.slot'); if (s) { hotbarSel = +s.dataset.i; renderHotbar(); showHeld(); e.preventDefault(); } }, { passive: false });
+  // keep the held (cursor) item under the finger inside container screens
+  $('screen').addEventListener('touchstart', (e) => { const t = e.touches[0]; if (t && cursor) { const ci = $('cursorItem'); ci.style.left = (t.clientX - 18) + 'px'; ci.style.top = (t.clientY - 18) + 'px'; } });
+}
 function updateHighlight() {
   const hit = raycastVoxel();
   if (hit) { highlightMesh.visible = true; highlightMesh.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5); }
@@ -1190,7 +1257,7 @@ function updateHighlight() {
 // ----------------------------------------------------------------------------
 function main() {
   initEngine();
-  bindInput(); bindSettings(); bindMenu();
+  bindInput(); bindSettings(); bindMenu(); setupTouch();
   requestAnimationFrame(loop);
 }
 

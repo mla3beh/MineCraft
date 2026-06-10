@@ -89,6 +89,31 @@
   #loadbar>i{ display:block; height:100%; width:0%; background:var(--accent); }
   kbd{ background:#222; border:1px solid #000; border-bottom-width:2px; padding:1px 5px; font-size:12px; }
   .help{ font-size:12px; opacity:.8; line-height:1.7; max-width:480px; }
+
+  /* ---------- Touch controls (mobile) ---------- */
+  #touch{ position:fixed; inset:0; z-index:9; pointer-events:none; touch-action:none; }
+  body:not(.touch) #touch{ display:none; }
+  #tlook{ position:absolute; inset:0; pointer-events:auto; }
+  #tstick{ position:absolute; left:22px; bottom:28px; width:128px; height:128px; border-radius:50%;
+    background:#ffffff14; border:2px solid #ffffff3a; pointer-events:auto; touch-action:none; }
+  #tnub{ position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%;
+    background:#ffffff4d; border:2px solid #ffffffaa; }
+  #tbtns{ position:absolute; right:18px; bottom:26px; display:flex; gap:14px; align-items:flex-end; pointer-events:none; }
+  #ttop{ position:absolute; right:12px; top:70px; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+  .tbtn{ pointer-events:auto; touch-action:none; background:#0009; color:#fff; border:2px solid #ffffff77; border-radius:50%;
+    width:64px; height:64px; font-size:24px; display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; }
+  .tbtn:active{ background:#ffffff44; }
+  #tjump{ width:80px; height:80px; font-size:28px; }
+  .tbtn.sm{ width:48px; height:48px; font-size:18px; }
+  /* mobile HUD tweaks (only when body.touch) */
+  .touch #hotbar{ top:6px; bottom:auto; left:50%; transform:translateX(-50%); pointer-events:auto; }
+  .touch .slot{ width:32px; height:32px; }
+  .touch .slot canvas{ width:26px; height:26px; }
+  .touch #stats{ top:46px; bottom:auto; width:260px; }
+  .touch #heldName{ bottom:auto; top:84px; }
+  .touch .help{ display:none; }
+  .touch #debug{ font-size:10px; }
+  #screenClose{ position:absolute; right:8px; top:6px; min-width:auto !important; padding:2px 11px; }
 </style>
 </head>
 <body>
@@ -156,6 +181,22 @@
     <div class="bar" id="foodBar"></div>
   </div>
   <div id="hotbar"></div>
+</div>
+
+<!-- ===================== TOUCH CONTROLS (mobile only) ===================== -->
+<div id="touch" class="hidden">
+  <div id="tlook"></div>
+  <div id="tstick"><div id="tnub"></div></div>
+  <div id="tbtns">
+    <button type="button" id="tbreak" class="tbtn">⛏</button>
+    <button type="button" id="tplace" class="tbtn">▦</button>
+    <button type="button" id="tjump" class="tbtn">⤒</button>
+  </div>
+  <div id="ttop">
+    <button type="button" id="tinv" class="tbtn sm">▤</button>
+    <button type="button" id="tfly" class="tbtn sm">✈</button>
+    <button type="button" id="tpause" class="tbtn sm">⏸</button>
+  </div>
 </div>
 
 <!-- ===================== SCREENS (inventory/craft/furnace/chest) ===================== -->

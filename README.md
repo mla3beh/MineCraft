@@ -53,6 +53,12 @@ at runtime (no third-party assets / no Mojang IP).
 | Chat / Command | `T` / `/` |
 | Pause | `Esc` |
 
+**Mobile / touch:** on phones & tablets the game auto-detects a touch device and shows on-screen
+controls — a left **virtual joystick** to move, **drag the screen** to look, and buttons for
+**⛏ break (hold)**, **▦ place/use**, **⤒ jump**, plus **▤ inventory**, **⏸ pause** and **✈ fly**
+(creative). Tap a hotbar slot to select it; container screens get a **✕** close button. Desktop
+controls are unchanged (touchscreen laptops with a mouse stay in desktop mode).
+
 ## Run locally
 
 ES modules require HTTP (not `file://`):
