@@ -5,7 +5,8 @@ game that runs entirely in the browser with no build step and **full local save/
 [Three.js](https://threejs.org/) (WebGL2). All textures, sounds and names are 100% original and generated
 at runtime (no third-party assets / no Mojang IP).
 
-> **Play:** open `index.html` over any static web server (see *Run locally* below), or use the hosted link.
+> **Play:** serve the folder over any static web server and open `index.html` — see *Run locally* below.
+> (There's no build step; Three.js loads from a CDN via an import map.)
 
 ## Features
 
